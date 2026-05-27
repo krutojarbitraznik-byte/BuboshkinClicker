@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Бубошкин Кликер</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1e3c2c 0%, #2a4a35 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 60px;
+            padding: 30px 20px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .coin {
+            width: 280px;
+            height: 280px;
+            margin: 0 auto 30px;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+        }
+
+        .coin:active {
+            transform: scale(0.96);
+        }
+
+        .coin img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            pointer-events: none;
+        }
+
+        .stats {
+            background: rgba(0,0,0,0.6);
+            border-radius: 100px;
+            padding: 15px 25px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            flex: 1;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #ffd966;
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .cooldown {
+            background: rgba(0,0,0,0.7);
+            border-radius: 40px;
+            padding: 15px;
+            margin-top: 20px;
+            color: #ffaa66;
+            font-weight: bold;
+        }
+
+        .timer {
+            font-size: 32px;
+            font-family: monospace;
+            color: #ff8844;
+        }
+
+        .login-area, .click-area {
+            transition: all 0.3s;
+        }
+
+        .login-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: 0.2s;
+        }
+
+        .login-btn:hover {
+            background: #2ecc71;
+            transform: scale(1.02);
+        }
+
+        .user-info {
+            background: rgba(0,0,0,0.5);
+            border-radius: 40px;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            color: #ddd;
+            font-size: 14px;
+        }
+
+        .alert {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #e67e22;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: bold;
+            z-index: 100;
+            animation: fadeOut 2s forwards;
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            70% { opacity: 1; }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-30px); visibility: hidden; }
+        }
+
+        .logout-btn {
+            background: #c0392b;
+            border: none;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .coin { width: 200px; height: 200px; }
+            .stat-value { font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <div id="loginScreen" class="login-area">
+        <h2 style="color:white; margin-bottom:20px;">🐿️ Бубошкин Кликер</h2>
+        <div class="user-info">
+            🔐 Вход только через Telegram
+        </div>
+        <button class="login-btn" onclick="requestTelegramAuth()">🚀 Войти через Telegram</button>
+        <div style="margin-top:20px; font-size:12px; color:#aaa;">
+            При входе вы перейдете в бота для регистрации
+        </div>
+    </div>
+
+    <div id="gameScreen" style="display:none;">
+        <div class="user-info" id="userInfo">
+            Загрузка...
+        </div>
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-label">🍪 Бубошкин Coins</div>
+                <div class="stat-value" id="balance">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">📊 Всего кликов</div>
+                <div class="stat-value" id="todayClicks">0</div>
+            </div>
+        </div>
+        <div class="coin" id="clickableCoin">
+            <img src="https://iili.io/CdU6IFn.jpg" alt="Бубошка" onerror="this.src='https://via.placeholder.com/280?text=🐿️'">
+        </div>
+        <div id="cooldownBox" class="cooldown" style="display:none;">
+            ⏳ Отдых! Перерыв <span id="timerSeconds" class="timer">10</span> секунд
+        </div>
+        <div style="margin-top:15px;">
+            <button class="logout-btn" onclick="logout()">Выйти</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = '';
+    let userId = null;
+    let clickCooldown = false;
+    let timerInterval = null;
+
+    async function requestTelegramAuth() {
+        window.open('https://t.me/BuboshkinClickerBot?start=auth', '_blank');
+        showAlert('✅ Перейдите в бота и нажмите /start, затем вернитесь и войдите заново!');
+        
+        setTimeout(() => {
+            if(confirm('После регистрации в боте, нажмите OK чтобы войти в игру')) {
+                login();
+            }
+        }, 3000);
+    }
+
+    async function login() {
+        try {
+            const resp = await fetch(`${API_URL}/api/auth`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            const data = await resp.json();
+            if(data.user_id) {
+                userId = data.user_id;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('gameScreen').style.display = 'block';
+                document.getElementById('userInfo').innerHTML = `👤 ID: ${userId.substring(0,8)}... | 🐿️ Бубошкин фермер`;
+                loadUserData();
+                startAutoRefresh();
+            } else {
+                showAlert('❌ Ошибка входа. Убедитесь, что вы зарегистрировались в боте');
+            }
+        } catch(e) {
+            showAlert('Ошибка сервера, попробуйте позже');
+        }
+    }
+
+    async function loadUserData() {
+        if(!userId) return;
+        const resp = await fetch(`${API_URL}/api/user/${userId}`);
+        const data = await resp.json();
+        if(data.balance !== undefined) {
+            document.getElementById('balance').innerText = Math.floor(data.balance);
+            document.getElementById('todayClicks').innerText = data.today_clicks || 0;
+            
+            if(data.cooldown_until && data.cooldown_until > Date.now()) {
+                startCooldown(data.cooldown_until);
+            } else {
+                stopCooldown();
+            }
+        }
+    }
+
+    async function clickCoin() {
+        if(!userId || clickCooldown) return;
+        
+        const coinImg = document.querySelector('.coin');
+        coinImg.style.transform = 'scale(0.9)';
+        setTimeout(() => { coinImg.style.transform = ''; }, 100);
+        
+        const resp = await fetch(`${API_URL}/api/click`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        
+        const result = await resp.json();
+        if(result.success) {
+            document.getElementById('balance').innerText = Math.floor(result.new_balance);
+            document.getElementById('todayClicks').innerText = result.today_clicks;
+            
+            if(result.cooldown) {
+                startCooldown(result.cooldown_until);
+                showAlert('🎉 1000 кликов! Перерыв 10 секунд!');
+            }
+        } else if(result.error === 'cooldown') {
+            showAlert('⏳ Подождите, идет перерыв!');
+            if(result.cooldown_until) startCooldown(result.cooldown_until);
+        } else {
+            showAlert('Ошибка! Попробуйте снова.');
+        }
+    }
+
+    function startCooldown(cooldownUntil) {
+        clickCooldown = true;
+        document.getElementById('cooldownBox').style.display = 'block';
+        const coinDiv = document.getElementById('clickableCoin');
+        coinDiv.style.opacity = '0.5';
+        coinDiv.style.pointerEvents = 'none';
+        
+        if(timerInterval) clearInterval(timerInterval);
+        
+        function updateTimer() {
+            const remaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+            document.getElementById('timerSeconds').innerText = remaining;
+            if(remaining <= 0) {
+                stopCooldown();
+            }
+        }
+        updateTimer();
+        timerInterval = setInterval(updateTimer, 200);
+    }
+
+    function stopCooldown() {
+        clickCooldown = false;
+        clearInterval(timerInterval);
+        document.getElementById('cooldownBox').style.display = 'none';
+        const coinDiv = document.getElementById('clickableCoin');
+        coinDiv.style.opacity = '1';
+        coinDiv.style.pointerEvents = 'auto';
+    }
+
+    function logout() {
+        fetch(`${API_URL}/api/logout`, { method: 'POST', credentials: 'include' });
+        userId = null;
+        document.getElementById('loginScreen').style.display = 'block';
+        document.getElementById('gameScreen').style.display = 'none';
+        stopCooldown();
+        showAlert('Вы вышли из системы');
+    }
+
+    function showAlert(msg) {
+        const div = document.createElement('div');
+        div.className = 'alert';
+        div.innerText = msg;
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 2000);
+    }
+
+    let refreshInterval = null;
+    function startAutoRefresh() {
+        if(refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(() => {
+            if(userId) loadUserData();
+        }, 5000);
+    }
+
+    document.getElementById('clickableCoin')?.addEventListener('click', clickCoin);
+    
+    window.onload = () => {
+        login();
+    };
+</script>
+</body>
+</html>
